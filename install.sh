@@ -31,7 +31,7 @@ if [ "$#" -eq 0 ]; then
 fi
 
 # Create the service file with custom parameters
-service_content="[Unit]\nDescription=Polling Rate Control Script\n\n[Service]\nExecStart=$script_path --min $min_polling_rate --max $max_polling_rate --update $update_interval\n\n[Install]\nWantedBy=default.target"
+service_content="[Unit]\nDescription=Polling Rate Control Script\nAfter=ratbagd.service\n\n[Service]\nExecStart=$script_path --min $min_polling_rate --max $max_polling_rate --update $update_interval\n\n[Install]\nWantedBy=default.target"
 
 echo -e $service_content > ~/.config/systemd/user/$service_name.service
 

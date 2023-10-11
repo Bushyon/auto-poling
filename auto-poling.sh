@@ -30,12 +30,18 @@ do
     # Define the file path in the /tmp directory
     file_path="/tmp/polling_rate.txt"
 
-    # Check if the control file exists and read the polling rate from it
+    # Check if the control file exists
     if [ -f $file_path ]; then
+        # Read the polling rate from the file
         rate=$(cat $file_path)
+
+        # Validate if the rate is a number
+        if ! [[ "$rate" =~ ^[0-9]+$ ]]; then
+            echo "Invalid polling rate found in file. Resetting to default."
+            rate=$min_polling_rate
+        fi
     else
-        rate=$(ratbagctl 0 rate get)
-        echo $rate > $file_path
+        rate=$min_polling_rate
     fi
 
     if pgrep -a -f steam | grep reaper > /dev/null; then
