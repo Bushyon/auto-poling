@@ -1,6 +1,6 @@
 # Auto-Poling
 
-Auto-Poling is a script designed for Linux to automatically adjust the polling rate of your mouse whenever a game on Steam is launched. A lower poling rate ouside games should help improving batery life. Tested on Logitech G305, fell free to tell me how te code runs in another devices.
+Auto-Poling is a script designed for Linux to automatically adjust the polling rate of your mouse whenever a game on Steam is launched. A lower poling rate ouside games should help improving batery life.
 
 ## Installation
 
@@ -33,6 +33,9 @@ To uninstall Auto-Poling, run the uninstallation script:
 ```
 
 This will remove the service and related files from your system.
+
+## Tested on
+Tested on Logitech G305 in archlinux, in theory should work on the Steam Deck / other distros and other mices as well. Fell free to let me know!
 
 ## Contributing
 
