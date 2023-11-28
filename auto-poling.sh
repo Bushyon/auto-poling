@@ -4,7 +4,7 @@
 min_polling_rate=125
 max_polling_rate=500
 update_interval=20
-
+devices=$(ratbagctl list | cut -d":" -f1)
 # Parse command-line arguments
 while [[ "$#" -gt 0 ]]; do
     case $1 in
@@ -46,12 +46,12 @@ do
 
     if pgrep -a -f steam | grep reaper > /dev/null; then
         if [ $rate -ne $max_polling_rate ]; then
-            ratbagctl 0 rate set $max_polling_rate
+            for device in $devices;do ratbagctl $device rate set $max_polling_rate;done
             echo $max_polling_rate > $file_path
         fi
     else
         if [ $rate -ne $min_polling_rate ]; then
-            ratbagctl 0 rate set $min_polling_rate
+            for device in $devices;do ratbagctl $device rate set $min_polling_rate;done
             echo $min_polling_rate > $file_path
         fi
     fi
