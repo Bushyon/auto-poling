@@ -2,15 +2,25 @@
 
 # Get the script's directory
 script_dir=$(dirname "$(readlink -f "$0")")
+env_file="$script_dir/.env"
+
+if [[ -f "$env_file" ]]; then
+    . "$env_file"
+fi
+
+: "${MIN_POLLING_RATE:=125}"
+: "${MAX_POLLING_RATE:=500}"
+: "${UPDATE_INTERVAL:=20}"
+: "${SERVICE_NAME:=auto-poling}"
 
 # Define the script and service paths
 script_path="$script_dir/auto-poling.sh"
-service_name="auto-poling"
+service_name="$SERVICE_NAME"
 
 # Default values
-min_polling_rate=125
-max_polling_rate=500
-update_interval=20
+min_polling_rate="$MIN_POLLING_RATE"
+max_polling_rate="$MAX_POLLING_RATE"
+update_interval="$UPDATE_INTERVAL"
 
 # Parse command-line arguments
 while [[ "$#" -gt 0 ]]; do

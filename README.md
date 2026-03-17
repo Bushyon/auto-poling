@@ -1,74 +1,61 @@
 # Auto-Poling
 
-Auto-Poling is a script designed for Linux to automatically adjust the polling rate of your mouse whenever a game on Steam is launched. A lower poling rate ouside games should help improving batery life.
+Auto-Poling is a small Linux service that keeps your mouse polling rate low on the desktop and automatically boosts it whenever a game is running. It was built for Steam, but any launcher or standalone binary can be detected through simple process matchers.
+
+## Features
+- Watches for Steam games by inspecting running processes for `SteamGameId` / `SteamAppId`.
+- Optional matcher list lets you trigger on non-Steam launchers (Lutris, Heroic, Wine binaries, etc.).
+- User-level systemd service installs with one script and remembers the last applied rate per session.
+- Configuration lives in `.env`, but every value can be overridden via CLI flags (`--min`, `--max`, `--update`).
+
+## Requirements
+- Linux with `systemd --user` support.
+- `ratbagctl` (from libratbag) with a compatible mouse.
+- Permission to read `/proc/$pid/environ` for your user processes (default on most distros).
 
 ## Installation
+1. Clone the repo and `cd auto-poling`.
+2. Edit `.env` (or export overrides) to set your preferred defaults.
+3. Run `./install.sh`.
 
-To install Auto-Poling, follow these steps:
+The install script copies a user service into `~/.config/systemd/user/auto-poling.service`, reloads the daemon, and starts it immediately.
 
-1. Clone this repository to your local machine.
-2. Ensure you have the required dependencies installed (`ratbagctl`).
-3. Run the installation script:
+## Configuration
+All defaults live in `.env`. Edit the file (or provide overrides in your environment) before running `install.sh`.
 
-```bash
-./install.sh
-```
+| Variable | Description |
+| --- | --- |
+| `MIN_POLLING_RATE` / `MAX_POLLING_RATE` | Rates applied when idle vs. gaming. |
+| `UPDATE_INTERVAL` | Seconds between device/process checks. |
+| `POLLING_FILE_PATH` | Where the current rate is cached (avoids redundant writes). |
+| `SERVICE_NAME` | systemd unit name, if you need multiple instances. |
+| `GAME_MATCHERS` | Comma-separated substrings to match against process command lines for non-Steam titles. Steam games are detected automatically; use this for extra launchers. |
+
+CLI flags still win over anything defined in `.env`.
 
 ## Usage
+- To check the service: `systemctl --user status auto-poling`
+- To view logs: `journalctl --user-unit=auto-poling -f`
+- To run ad-hoc (foreground): `./auto-poling.sh --min 125 --max 1000 --update 15`
 
-Once installed, Auto-Poling will monitor Steam game launches and dynamically adjust the polling rate of your mouse accordingly. You can customize the behavior by modifying the script or using command-line parameters.
-
-### Command-line Parameters
-
-- `--min <min_polling_rate>`: Set the minimum polling rate.
-- `--max <max_polling_rate>`: Set the maximum polling rate.
-- `--update <update_interval>`: Set the update interval in seconds.
+When a rate change happens you will see logs like `Polling rate set to 500 (Steam GameID 123456 process detected …)` or `Polling rate set to 125 (No game processes detected)`.
 
 ## Uninstallation
-
-To uninstall Auto-Poling, run the uninstallation script:
-
 ```bash
 ./uninstall.sh
 ```
+That stops the service, disables it, removes the unit file, and reloads the user daemon.
 
-This will remove the service and related files from your system.
+## Tested Devices
+- Logitech G305
+- Logitech G Pro X Superlight (1st gen)
 
-## Tested on
-Tested on Logitech G305 in archlinux, in theory should work on the Steam Deck / other distros and other mices as well. Fell free to let me know!
+Any mouse supported by libratbag should behave the same way, since the scripts rely solely on `ratbagctl` for device interaction.
 
-## Some Ideas for New Features
-
-1. **Profile Management**: Allow users to set different polling rate profiles for specific games or applications.
-
-2. **Customizable Device IDs**: Let users specify the device IDs for which the polling rate should be adjusted.
-
-3. **Notification System**: Implement an optional notification system to alert users when the polling rate changes.
-
-4. **Logging**: Add a logging feature to keep a record of when and why the polling rate was changed.
-
-5. **GUI Configuration Tool**: Create a simple GUI for users to configure settings without directly editing the script.
-
-6. **Support for Multiple Mice**: Extend the script to work with multiple mice connected to the system.
-
-7. **Game Whitelist/Blacklist**: Allow users to specify a list of games that should always have a certain polling rate.
-
-8. **Integration with Gaming Platforms**: Integrate with platforms beyond Steam.
-
-9. **Multi-Platform Support**: Ensure compatibility with a wider range of Linux distributions.
-
-10. **Low Battery Mode**: Implement a feature that dynamically adjusts the polling rate when a low battery level is detected.
-
-11. **Automatic Updates**: Add a feature to check for and apply updates to the script.
-
-12. **Support for Additional Devices**: Test and ensure compatibility with a broader range of gaming mice models.
-
-13. **Resource Usage**: Ensure the resource impact on the system is minimal, for optimal FPS. 😎
-
-## Contributing
-
-If you'd like to contribute to this project, please fork the repository and create a pull request.
+## Troubleshooting
+- Ensure `ratbagctl list` shows your mouse and `ratbagctl <device> rate set 500` works manually.
+- If no games are detected, confirm the process name appears in `ps -u $USER -f` and add it to `GAME_MATCHERS`.
+- Use `journalctl --user-unit=auto-poling -f` to watch detection logs in real time.
 
 ## License
-
-This project is licensed under the [MIT License](LICENSE).
+[MIT](LICENSE)
