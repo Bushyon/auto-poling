@@ -5,7 +5,7 @@ script_dir=$(dirname "$(readlink -f "$0")")
 
 # Define the script and service paths
 script_path="$script_dir/auto-poling.sh"
-service_name="AutoPoling"
+service_name="auto-poling"
 
 # Default values
 min_polling_rate=125
