@@ -1,6 +1,16 @@
 # Auto-Poling
 
-Auto-Poling is a small Linux service that keeps your mouse polling rate low on the desktop and automatically boosts it whenever a game is running. It was built for Steam, but any launcher or standalone binary can be detected through simple process matchers.
+Auto-Poling is a small Linux service that keeps your mouse polling rate low on the desktop and automatically boosts it whenever a game is running. In theory saving batery on the process.
+
+It was built for Steam, but any launcher or standalone binary can be detected through simple process matchers. 
+```
+  👉 Dropping from 1000 Hz → 125 Hz can result in:
+  
+  ~+30–50% longer battery life
+  
+  ~+20–40 extra hours per charge
+```
+Chat GPT and voices in my head estimates
 
 ## Features
 - Watches for Steam games by inspecting running processes for `SteamGameId` / `SteamAppId`.
