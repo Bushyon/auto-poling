@@ -10,7 +10,7 @@ It was built for Steam, but any launcher or standalone binary can be detected th
   
   ~+20–40 extra hours per charge
 ```
-Chat GPT and voices in my head estimates
+Chat GPT and voices in my head estimates.
 
 ## Features
 - Watches for Steam games by inspecting running processes for `SteamGameId` / `SteamAppId`.
