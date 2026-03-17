@@ -4,8 +4,7 @@ Auto-Poling is a small Linux service that keeps your mouse polling rate low on t
 
 ## Features
 - Watches for Steam games by inspecting running processes for `SteamGameId` / `SteamAppId`.
-- Detects Minecraft (official launcher, PrismLauncher, MultiMC, ATLauncher, etc.) out of the box.
-- Optional matcher list lets you trigger on other launchers (Lutris, Heroic, Wine binaries, etc.).
+- Generic process matchers let you boost polling for any launcher or binary (Lutris, Heroic, Wine titles, etc.).
 - User-level systemd service installs with one script and remembers the last applied rate per session.
 - Configuration lives in `.env`, but every value can be overridden via CLI flags (`--min`, `--max`, `--update`).
 
@@ -30,8 +29,13 @@ All defaults live in `.env`. Edit the file (or provide overrides in your environ
 | `UPDATE_INTERVAL` | Seconds between device/process checks. |
 | `POLLING_FILE_PATH` | Where the current rate is cached (avoids redundant writes). |
 | `SERVICE_NAME` | systemd unit name, if you need multiple instances. |
-| `GAME_MATCHERS` | Comma-separated substrings to match against process command lines for non-Steam titles. |
-| `MINECRAFT_MATCHERS` | Patterns used to spot Minecraft launchers/clients (defaults cover the official launcher, `.minecraft` paths, PrismLauncher, MultiMC, ATLauncher). |
+| `GAME_MATCHERS` | Comma-separated matchers for non-Steam titles. Plain entries perform case-insensitive substring checks on the entire command line; prefix with `cmd:` to compare against the executable/first argument name, or `exe:` to inspect the resolved binary name. |
+| `GAME_BLOCKLIST` | Optional comma-separated entries. Plain substrings (case-insensitive) block every match; entries in the form `<matcher>::<substring>` only apply when that specific matcher fired, which helps suppress helper jobs (e.g., `PrismLauncher::bisync`). |
+
+### Matching tips
+- The default `.env` ships with sensible matchers for Prism Launcher, the stock Minecraft launcher, MultiMC/Prism/GDLauncher-derived Java entrypoints, and common loaders (Forge, Fabric, Quilt). Adjust `GAME_MATCHERS` if you use something more exotic.
+- Prefer `cmd:` prefixes for GUI launchers such as Prism so helper utilities like `watch` or `inotifywait` (which merely mention the launcher path) do not trigger a false positive.
+- If you still see flicker, add targeted blocklist rules with the `<matcher>::substring` form—e.g., `cmd:prismlauncher::watch -n 1` keeps your backup scripts from counting as gameplay while still allowing the real launcher to raise the rate instantly.
 
 CLI flags still win over anything defined in `.env`.
 

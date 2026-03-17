@@ -14,7 +14,7 @@ fi
 : "${UPDATE_INTERVAL:=20}"
 : "${POLLING_FILE_PATH:="$HOME/.config/polling_rate.txt"}"
 : "${GAME_MATCHERS:="steam_appid,reaper,gamescope"}"
-: "${MINECRAFT_MATCHERS:="minecraft-launcher,.minecraft,net.minecraft.client.main.Main,PrismLauncher,MultiMC,ATLauncher"}"
+: "${GAME_BLOCKLIST:=}"
 
 GAME_REASON=""
 CURRENT_UID=$(id -u)
@@ -24,6 +24,129 @@ trim() {
     var="${var#"${var%%[![:space:]]*}"}"
     var="${var%"${var##*[![:space:]]}"}"
     printf '%s' "$var"
+}
+
+is_blocked_command() {
+    local cmdline="$1"
+    local matcher="$2"
+    local cmdline_lc="${cmdline,,}"
+    local matcher_lc="${matcher,,}"
+    local raw trimmed entry_matcher entry_block entry_block_lc entry_matcher_lc
+    local patterns=()
+    local IFS=','
+
+    [[ -z "$GAME_BLOCKLIST" ]] && return 1
+
+    read -ra patterns <<<"$GAME_BLOCKLIST"
+
+    for raw in "${patterns[@]}"; do
+        raw=$(trim "$raw")
+        [[ -z "$raw" ]] && continue
+
+        if [[ "$raw" == *"::"* ]]; then
+            entry_matcher=$(trim "${raw%%::*}")
+            entry_block=$(trim "${raw#*::}")
+        else
+            entry_matcher=""
+            entry_block="$raw"
+        fi
+
+        [[ -z "$entry_block" ]] && continue
+        entry_block_lc="${entry_block,,}"
+
+        if [[ -n "$entry_matcher" ]]; then
+            entry_matcher_lc="${entry_matcher,,}"
+            [[ "$matcher_lc" != "$entry_matcher_lc" ]] && continue
+        fi
+
+        if [[ "$cmdline_lc" == *"$entry_block_lc"* ]]; then
+            return 0
+        fi
+    done
+
+    return 1
+}
+
+process_matches() {
+    local matcher="$1"
+    local mode="args"
+    local token="$matcher"
+    local line pid comm args full full_lc token_lc first_arg exe_path exe_base
+
+    case "$matcher" in
+        cmd:*|name:*)
+            mode="command"
+            token="${matcher#*:}"
+            ;;
+        exe:*)
+            mode="exe"
+            token="${matcher#*:}"
+            ;;
+        args:*)
+            token="${matcher#*:}"
+            ;;
+    esac
+
+    token=$(trim "$token")
+    [[ -z "$token" ]] && return 1
+    token_lc="${token,,}"
+
+    while read -r pid comm args; do
+        [[ -z "$pid" ]] && continue
+        full="$comm $args"
+        full_lc="${full,,}"
+
+        if [[ "$mode" == "command" ]]; then
+            if [[ "${comm,,}" != "$token_lc" ]]; then
+                if [[ -n "$args" ]]; then
+                    first_arg=${args%% *}
+                    first_arg=${first_arg##*/}
+                    if [[ "${first_arg,,}" != "$token_lc" ]]; then
+                        continue
+                    fi
+                else
+                    continue
+                fi
+            fi
+        elif [[ "$mode" == "exe" ]]; then
+            exe_path=$(readlink "/proc/$pid/exe" 2>/dev/null || true)
+            exe_match=false
+
+            if [[ -n "$exe_path" ]]; then
+                exe_base=${exe_path##*/}
+                if [[ "${exe_base,,}" == "$token_lc" ]]; then
+                    exe_match=true
+                fi
+            fi
+
+            if [[ "$exe_match" == false ]]; then
+                first_arg=${args%% *}
+                first_arg=${first_arg##*/}
+                if [[ -n "$first_arg" && "${first_arg,,}" == "$token_lc" ]]; then
+                    exe_match=true
+                fi
+            fi
+
+            [[ "$exe_match" == true ]] || continue
+        else
+            if [[ "$full_lc" != *"$token_lc"* ]]; then
+                continue
+            fi
+        fi
+
+        if ! is_blocked_command "$full" "$matcher"; then
+            if [[ "$mode" == "command" ]]; then
+                GAME_REASON="process command \"$comm\" matched \"$token\""
+            elif [[ "$mode" == "exe" ]]; then
+                GAME_REASON="binary \"$exe_base\" matched \"$token\""
+            else
+                GAME_REASON="process matched \"$token\""
+            fi
+            return 0
+        fi
+    done < <(ps -u "$CURRENT_UID" -o pid= -o comm= -o args=)
+
+    return 1
 }
 
 # -----------------------------
@@ -69,6 +192,22 @@ fi
 # -----------------------------
 get_devices() {
     ratbagctl list | cut -d":" -f1
+}
+
+get_device_rate() {
+    local device output rate
+
+    for device in $(get_devices); do
+        if output=$(ratbagctl "$device" rate get 2>/dev/null); then
+            rate=$(grep -Eo '[0-9]+' <<<"$output" | head -n1 || true)
+            if [[ -n "$rate" ]]; then
+                echo "$rate"
+                return 0
+            fi
+        fi
+    done
+
+    return 1
 }
 
 get_current_rate() {
@@ -140,26 +279,6 @@ steam_game_running() {
     return 1
 }
 
-minecraft_running() {
-    local raw_pattern trimmed
-    local patterns=()
-    local IFS=','
-
-    read -ra patterns <<<"$MINECRAFT_MATCHERS"
-
-    for raw_pattern in "${patterns[@]}"; do
-        trimmed=$(trim "$raw_pattern")
-        [[ -z "$trimmed" ]] && continue
-
-        if pgrep -a -u "$CURRENT_UID" -f "$trimmed" >/dev/null 2>&1; then
-            GAME_REASON="Minecraft process matched \"$trimmed\""
-            return 0
-        fi
-    done
-
-    return 1
-}
-
 is_gaming() {
     local raw_pattern trimmed
     local patterns=()
@@ -171,18 +290,13 @@ is_gaming() {
         return 0
     fi
 
-    if minecraft_running; then
-        return 0
-    fi
-
     read -ra patterns <<<"$GAME_MATCHERS"
 
     for raw_pattern in "${patterns[@]}"; do
         trimmed=$(trim "$raw_pattern")
         [[ -z "$trimmed" ]] && continue
 
-        if pgrep -a -u "$CURRENT_UID" -f "$trimmed" >/dev/null 2>&1; then
-            GAME_REASON="process matched \"$trimmed\""
+        if process_matches "$trimmed"; then
             return 0
         fi
     done
@@ -190,18 +304,19 @@ is_gaming() {
     return 1
 }
 
-LAST_APPLIED_RATE=$(get_current_rate)
+if ! LAST_APPLIED_RATE=$(get_device_rate); then
+    LAST_APPLIED_RATE=$(get_current_rate)
+else
+    echo "$LAST_APPLIED_RATE" > "$FILE_PATH"
+fi
+
+set_rate_all_devices "$MIN_RATE" "Startup default"
+LAST_APPLIED_RATE="$MIN_RATE"
 
 # -----------------------------
 # Main loop
 # -----------------------------
 while true; do
-    current_rate=$(get_current_rate)
-
-    if [[ "$current_rate" != "$LAST_APPLIED_RATE" ]]; then
-        LAST_APPLIED_RATE="$current_rate"
-    fi
-
     if is_gaming; then
         target_rate="$MAX_RATE"
         reason="${GAME_REASON:-Game process detected}"
