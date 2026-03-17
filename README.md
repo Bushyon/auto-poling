@@ -4,7 +4,8 @@ Auto-Poling is a small Linux service that keeps your mouse polling rate low on t
 
 ## Features
 - Watches for Steam games by inspecting running processes for `SteamGameId` / `SteamAppId`.
-- Optional matcher list lets you trigger on non-Steam launchers (Lutris, Heroic, Wine binaries, etc.).
+- Detects Minecraft (official launcher, PrismLauncher, MultiMC, ATLauncher, etc.) out of the box.
+- Optional matcher list lets you trigger on other launchers (Lutris, Heroic, Wine binaries, etc.).
 - User-level systemd service installs with one script and remembers the last applied rate per session.
 - Configuration lives in `.env`, but every value can be overridden via CLI flags (`--min`, `--max`, `--update`).
 
@@ -29,7 +30,8 @@ All defaults live in `.env`. Edit the file (or provide overrides in your environ
 | `UPDATE_INTERVAL` | Seconds between device/process checks. |
 | `POLLING_FILE_PATH` | Where the current rate is cached (avoids redundant writes). |
 | `SERVICE_NAME` | systemd unit name, if you need multiple instances. |
-| `GAME_MATCHERS` | Comma-separated substrings to match against process command lines for non-Steam titles. Steam games are detected automatically; use this for extra launchers. |
+| `GAME_MATCHERS` | Comma-separated substrings to match against process command lines for non-Steam titles. |
+| `MINECRAFT_MATCHERS` | Patterns used to spot Minecraft launchers/clients (defaults cover the official launcher, `.minecraft` paths, PrismLauncher, MultiMC, ATLauncher). |
 
 CLI flags still win over anything defined in `.env`.
 

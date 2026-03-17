@@ -14,6 +14,7 @@ fi
 : "${UPDATE_INTERVAL:=20}"
 : "${POLLING_FILE_PATH:="$HOME/.config/polling_rate.txt"}"
 : "${GAME_MATCHERS:="steam_appid,reaper,gamescope"}"
+: "${MINECRAFT_MATCHERS:="minecraft-launcher,.minecraft,net.minecraft.client.main.Main,PrismLauncher,MultiMC,ATLauncher"}"
 
 GAME_REASON=""
 CURRENT_UID=$(id -u)
@@ -139,6 +140,26 @@ steam_game_running() {
     return 1
 }
 
+minecraft_running() {
+    local raw_pattern trimmed
+    local patterns=()
+    local IFS=','
+
+    read -ra patterns <<<"$MINECRAFT_MATCHERS"
+
+    for raw_pattern in "${patterns[@]}"; do
+        trimmed=$(trim "$raw_pattern")
+        [[ -z "$trimmed" ]] && continue
+
+        if pgrep -a -u "$CURRENT_UID" -f "$trimmed" >/dev/null 2>&1; then
+            GAME_REASON="Minecraft process matched \"$trimmed\""
+            return 0
+        fi
+    done
+
+    return 1
+}
+
 is_gaming() {
     local raw_pattern trimmed
     local patterns=()
@@ -147,6 +168,10 @@ is_gaming() {
     GAME_REASON=""
 
     if steam_game_running; then
+        return 0
+    fi
+
+    if minecraft_running; then
         return 0
     fi
 
