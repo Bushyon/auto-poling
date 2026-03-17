@@ -190,11 +190,17 @@ is_gaming() {
     return 1
 }
 
+LAST_APPLIED_RATE=$(get_current_rate)
+
 # -----------------------------
 # Main loop
 # -----------------------------
 while true; do
     current_rate=$(get_current_rate)
+
+    if [[ "$current_rate" != "$LAST_APPLIED_RATE" ]]; then
+        LAST_APPLIED_RATE="$current_rate"
+    fi
 
     if is_gaming; then
         target_rate="$MAX_RATE"
@@ -204,8 +210,9 @@ while true; do
         reason="No game processes detected"
     fi
 
-    if [[ "$current_rate" != "$target_rate" ]]; then
+    if [[ "$LAST_APPLIED_RATE" != "$target_rate" ]]; then
         set_rate_all_devices "$target_rate" "$reason"
+        LAST_APPLIED_RATE="$target_rate"
     fi
 
     sleep "$INTERVAL"
